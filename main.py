@@ -9,7 +9,17 @@ class MainCommandsForDB:
         self.user = user
         self.password = password
 
-    def processing_phone(number: str):
+    def drop_all(self):
+        with psycopg2.connect(
+            database=self.name_db, user=self.user, password=self.password) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                DROP TABLE number_phones;
+                DROP TABLE users;
+                """)
+                conn.commit()
+
+    def processing_phone(self, number: str):
         """
 
         """
@@ -30,7 +40,7 @@ class MainCommandsForDB:
         else:
             return 'incorrect format of number phone, it should start 7 or 8'
 
-    def processing_name(name):
+    def processing_name(self, name: str):
         """
 
         """
@@ -47,7 +57,7 @@ class MainCommandsForDB:
         res[0] = n
         return ''.join(res)
 
-    def processing_email(email):
+    def processing_email(self, email: str):
         """
 
         """
@@ -92,15 +102,41 @@ class MainCommandsForDB:
                 conn.commit()
 
     def add_new_user(self, first_name: str, last_name: str, email: str, number='0'):
+        """
+
+        """
+        f_name = self.processing_name(first_name)
+        l_name = self.processing_name(last_name)
+        email = self.processing_email(email)
         with psycopg2.connect(
                 database=self.name_db, user=self.user, password=self.password) as conn:
             with conn.cursor() as cur:
                 cur.execute("""
-                
-                """)
+                INSERT INTO users(first_name, last_name, email) VALUES (%s, %s, %s) RETURNING id_user;
+                """, (f_name, l_name, email,))
+                id_u = cur.fetchone()[0]
                 conn.commit()
+            if number != '0':
+                num = self.processing_phone(number)
+                with psycopg2.connect(
+                        database=self.name_db, user=self.user,
+                        password=self.password) as conn:
+                    with conn.cursor() as cur:
+                        cur.execute("""
+                        INSERT INTO number_phones(number_phone, id_user) VALUES (%s, %s) RETURNING id_number_phone;
+                """, (num, id_u))
+                        id_p = cur.fetchone()[0]
+                        conn.commit()
+        return 'user added'
 
 
+first_name = 'SERGEY'
+last_name = 'Kuznetcov'
+email = 'SK@mail.com'
+number = '+7(920)809-2323'
 
-# main1 = MainCommandsForDB('postgres', 'postgres', '1997')
-# main1.create_table_users()
+main1 = MainCommandsForDB('postgres', 'postgres', '1997')
+main1.create_table_users()
+main1.add_new_user(first_name, last_name, email, number)
+
+# main1.drop_all()
